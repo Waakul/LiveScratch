@@ -138,7 +138,7 @@ async function backgroundScript() {
 
     const newProjectPage = 'https://scratch.mit.edu/create';
     async function prepRedirect(tab) {
-        if (uname == '*') { return false; }importScripts('background/socket.io.js', 'background/livescratchProject.js', 'background/auth.js');
+        if (uname == '*') { return false; }
         let id = getProjectId(tab.url);
 
 

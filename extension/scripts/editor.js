@@ -160,9 +160,19 @@ async function onTabLoad() {
     waitFor(()=>(!isNaN(parseFloat(location.pathname.split('/')[2])))).then(()=>{scratchId = location.pathname.split('/')[2];});
 
     // trap vm and store
-    let reactInst = Object.values(await getObj('div[class^="stage-header_stage-menu-wrapper_"]')).find((x) => x.child);
-    vm = reactInst.child.memoizedProps.vm;
-    store = reactInst.child.dependencies.firstContext.memoizedValue.store;
+    let reactElem = await getObj('div[class^="stage-header_stage-menu-wrapper_"]');
+    let reactKey = Object.keys(reactElem).find(k => k.startsWith('__reactFiber'));
+    let reactInst = reactElem[reactKey];
+    let reactLoopInst = reactInst;
+    while (reactLoopInst && (!reactLoopInst.memoizedProps || !reactLoopInst.memoizedProps.vm)) {
+        reactLoopInst = reactLoopInst.child;
+    }
+    vm = reactLoopInst.memoizedProps.vm;
+    reactLoopInst = reactInst;
+    while (reactLoopInst && (!reactLoopInst.dependencies || !reactLoopInst.dependencies.firstContext.memoizedValue.store)) {
+        reactLoopInst = reactLoopInst.child;
+    }
+    store = reactLoopInst.dependencies.firstContext.memoizedValue.store;
     addButtonInjectors();
     blId = isNaN(parseFloat(location.pathname.split('/')[2])) ? '' : await getBlocklyId(scratchId); //todo: should this use the result of the getBlId function, or a more specific endpoint to authenticating project joining?
     if(!blId) {
@@ -267,8 +277,9 @@ function setTopbarButtonVisibility() {
         else {document.getElementById('blUsersPanel').style.visibility = 'visible';}
     } catch(e) {console.error(e);}
     try{
-        if(!blId) {document.getElementById('blChatButton').style.visibility = 'hidden';}
-        else {document.getElementById('blChatButton').style.visibility = 'visible';}
+        let chatElem = document.getElementById('blChatButton');
+        if(!blId) {chatElem.style.visibility = 'hidden'; chatElem.style.display = 'none';}
+        else {chatElem.style.visibility = 'visible'; chatElem.style.display = 'flex';}
     } catch(e) {console.error(e);}
 }
 
@@ -404,26 +415,16 @@ async function activateLivescratch() {
     }
     vm.downloadProjectIdPromise = downloadProjectIdPromise.bind(vm);
 
-    // Trap ScratchBlocks -- adapted from https://github.com/ScratchAddons/ScratchAddons/blob/4248dc327a9f3360c77b94a89e396903218a2fc2/addon-api/content-script/Trap.js
-
-    // let reactElem = (await getObj(()=>document.querySelector('[class^="gui_blocks-wrapper"]')))
+    // Trap ScratchBlocks - rewrote for react 18 by waakul
 
     listenForObj('[class^="gui_blocks-wrapper"]',(reactElem)=>{
-
-        // let reactElem = (await getObj('[class^="gui_blocks-wrapper"]'))
-        let reactInst;
-        for(let e of Object.entries(reactElem)) {
-            if(e[0].startsWith('__reactInternalInstance')) {
-                reactInst = e[1];
-                break;
-            }
+        let reactKey = Object.keys(reactElem).find(k => k.startsWith('__reactFiber'));
+        let reactInst = reactElem[reactKey];
+        let reactLoopInst = reactInst;
+        while (reactLoopInst && (!reactLoopInst.stateNode || !reactLoopInst.stateNode.ScratchBlocks)) {
+            reactLoopInst = reactLoopInst.child;
         }
-
-        let childable = reactInst;
-        /* eslint-disable no-empty */
-        while (((childable = childable.child), !childable || !childable.stateNode || !childable.stateNode.ScratchBlocks)) {}
-
-        ScratchBlocks = childable.stateNode.ScratchBlocks;
+        ScratchBlocks = reactLoopInst.stateNode.ScratchBlocks; //reactInst.child.child.child.child.child.child.child.stateNode.ScratchBlocks;
         getWorkspace().removeChangeListener(blockListener);
         getWorkspace().addChangeListener(blockListener);
     });
@@ -432,14 +433,13 @@ async function activateLivescratch() {
     function getPaper() {
         let paperContainer = document.querySelector('[class^=\'paint-editor_canvas-container\']');
         if(!paperContainer) return null;
-        let reactInst;
-        for(let e of Object.entries(paperContainer)) {
-            if(e[0].startsWith('__reactInternalInstance')) {
-                reactInst = e[1];
-                break;
-            }
+        let reactKey = Object.keys(paperContainer).find(k => k.startsWith('__reactFiber'));
+        let reactInst = paperContainer[reactKey];
+        let reactLoopInst = reactInst;
+        while (reactLoopInst && (!reactLoopInst.stateNode || !reactLoopInst.stateNode.canvas)) {
+            reactLoopInst = reactLoopInst.child;
         }
-        return reactInst?.child?.child?.child?.stateNode;
+        return reactLoopInst.stateNode;
     }
 
     ///.......... ALL THE HACKY THINGS ..........//
@@ -2288,6 +2288,7 @@ blModalExample = document.querySelector('#blModalExample')
             result.parentNode.username = user.username
 
             resultt.style.visibility = 'visible'
+            resultt.style.display = 'flex'
             resultPic.style.backgroundImage = \`url('\${user.pic}')\`  
              } else {
                  resultt.style.visibility = 'hidden'
@@ -3555,8 +3556,8 @@ function addChatButton() {
 
         setChatUnread(chatUnreadCount);
 
-        if(!blId) {chatElem.style.visibility = 'hidden';}
-        else {chatElem.style.visibility = 'visible';}
+        if(!blId) {chatElem.style.visibility = 'hidden'; chatElem.style.display = 'none';}
+        else {chatElem.style.visibility = 'visible'; chatElem.style.display = 'flex';}
 
     }catch(e) {console.error(e);}
 }
