@@ -51,7 +51,7 @@ document.querySelector('button#projects')?.addEventListener('click', function ()
 
 function validateUrl(input) {
     const value = input.value;
-    const regex = new RegExp('^(https?:\/\/)([a-zA-Z0-9.-]+)(:[0-9]{1,5})?$');
+    const regex = new RegExp('^(https?:\/\/)([a-zA-Z0-9.-]+)(:[0-9]{1,5})/?$');
     return regex.test(value);
 }
 
