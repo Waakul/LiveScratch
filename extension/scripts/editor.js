@@ -2852,7 +2852,7 @@ function doIOwnThis() {
     return store.getState().session.session.user.id == store.getState().preview.projectInfo.author.id;
 }
 function addButtonInjectors() {
-    listenForObj('span[class*="share-button_share-button"]',
+    listenForObj('button[class*="share-button_share-button"]',
         (shareButton)=>{
             if(document.querySelector('livescratch-init')!==null) {return;}
             // bc.children[1].children[0].innerHTML = "Become Blajingus"
