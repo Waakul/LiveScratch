@@ -4,4 +4,4 @@
 *.DS_Store
 backend/storage
 /debug/
-backend/.env
+backend/.env 
