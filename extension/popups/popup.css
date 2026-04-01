@@ -355,6 +355,10 @@ footer {
   z-index: 10;
 }
 
+footer section .info {
+  font-size: 12px;
+}
+
 .flex-horiz {
   display: flex;
   align-items: flex-start;
@@ -370,6 +374,7 @@ footer {
   border-radius: 77.994px;
   border: 0.78px solid var(--Sub);
   background: var(--Sub);
+  height: 41px;
 }
 
 .credit img {

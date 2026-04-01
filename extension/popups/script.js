@@ -57,9 +57,8 @@ function validateUrl(input) {
 
 document.querySelectorAll('button.credit').forEach(function(credit){
     credit.onclick = () => {
-        let username = credit.querySelector('.credit-name').innerText;
         chrome.tabs.create({
-            url: `https://scratch.mit.edu/users/${username}`,
+            url: `${credit.id}?ref=livescratch-extension`,
         });
     };
 });   
