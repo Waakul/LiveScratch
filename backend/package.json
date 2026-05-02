@@ -23,7 +23,7 @@
     "express-basic-auth": "^1.2.1",
     "http": "^0.0.1-security",
     "n-readlines": "^1.0.1",
-    "node-cron": "^3.0.3",
+    "node-cron": "^4.2.1",
     "node-fetch": "^3.2.10",
     "pm2": "^5.4.3",
     "sanitize-filename": "^1.6.3",
