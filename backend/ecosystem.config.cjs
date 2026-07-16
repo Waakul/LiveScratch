@@ -10,6 +10,7 @@ module.exports = {
             name: "LiveScratch",
             script: "./index.js",
             killTimeout: 60000,
+	    node_args: "--max-old-space-size=5120",	
             env: {
                 PORT: process.env.PORT,
                 CHAT_WEBHOOK_URL: process.env.CHAT_WEBHOOK_URL,
