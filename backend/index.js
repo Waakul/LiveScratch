@@ -11,6 +11,7 @@ app.use(cors({origin:'*'}));
 app.use(express.json({ limit: '5MB' }));
 import basicAuth from 'express-basic-auth';
 import http from 'http';
+import fs from 'fs'; // <-- FIX: Imported fs module
 
 let httpServer = http.createServer(app);
 
@@ -28,7 +29,7 @@ export let isFinalSaving = false;
 
 import * as fileStorageUtils from './utils/fileStorage.js';
 import { installCleaningJob } from './utils/removeOldProjects.js';
-import { countRecentShared, recordPopup } from './utils/recentUsers.js';
+import { countRecentShared, recordPopup, saveRecent } from './utils/recentUsers.js'; // <-- FIX: Imported saveRecent
 import {setPaths, authenticate, fullAuthenticate, freePassesPath, freePasses} from './utils/scratch-auth.js';
 import initSockets from './WebSockets.js';
 
@@ -50,12 +51,6 @@ var sessionManager = SessionManager.fromJSON(sessionsObj);
 var userManager = new UserManager();
 setPaths(app,userManager,sessionManager);
 
-// let id = sessionManager.newProject('tester124','644532638').id
-// sessionManager.linkProject(id,'602888445','ilhp10',5)
-// userManager.befriend('ilhp10','tester124')
-// userManager.befriend('tester124','ilhp10')
-// console.log(JSON.stringify(sessionManager))
-
 fileStorageUtils.saveMapToFolder(sessionManager.livescratch,fileStorageUtils.livescratchPath);
 
 fileStorageUtils.saveLoop(sessionManager);
@@ -63,18 +58,19 @@ fileStorageUtils.saveLoop(sessionManager);
 async function finalSave(sessionManager) {
     try{
         if(isFinalSaving) {return;} // Exit early if another save is in progress to avoid duplication
+        isFinalSaving = true; // <-- FIX: Set immediately to prevent race condition during sleep
         console.log('sending message "' + restartMessage + '"');
         sessionManager.broadcastMessageToAllActiveProjects(restartMessage);
         await sleep(1000 * 2);
-        isFinalSaving = true;
         console.log('final saving...');
         fs.writeFileSync(fileStorageUtils.lastIdPath,(sessionManager.lastId).toString());
         fs.writeFileSync(freePassesPath,JSON.stringify(freePasses));
         await sessionManager.finalSaveAllProjects(); // Save all active project data to disk. This operation also automatically "offloads" them (frees memory).
-        saveMapToFolder(userManager.users,fileStorageUtils.usersPath);
+        fileStorageUtils.saveMapToFolder(userManager.users,fileStorageUtils.usersPath); // <-- FIX: Prefixed with fileStorageUtils
         await saveRecent();
         process.exit();
     } catch (e) {
+        console.error("Error during final save:", e);
         await sleep(1000 * 10); // If an error occurs, wait 10 seconds before allowing another save attempt
         isFinalSaving = false;
     }
@@ -107,7 +103,6 @@ app.get('/lsId/:scratchId/:uname',(req,res)=>{
         return;
     }
     let hasAccess = fullAuthenticate(req.params.uname,req.headers.authorization,lsId);
-    // let hasAccess = project.isSharedWithCaseless(req.params.uname)
 
     res.send(hasAccess ? lsId : null);
 });
@@ -118,7 +113,6 @@ app.get('/scratchIdInfo/:scratchId',(req,res)=>{
         res.send({err:('could not find livescratch project associated with scratch project id: ' + req.params.scratchId)});
     }
 });
-// meechapooch: "todo: sync info and credits with this endpoint as well?" Waakul: Na hail naw, setting idea unlocked!
 app.get('/projectTitle/:id',(req,res)=>{
     if(!fullAuthenticate(req.headers.uname,req.headers.authorization,req.params.id)) {res.send({noauth:true}); return;}
 
@@ -163,12 +157,12 @@ app.get('/changesSince/:id/:version',(req,res)=>{
     else {
 
         let oldestChange = project.project.getIndexZeroVersion();
-        let clientVersion = req.params.version;
+        let clientVersion = parseFloat(req.params.version); // <-- FIX: Explicitly parse float
         let jsonVersion = project.jsonVersion;
         let forceReload = clientVersion<oldestChange-1 && jsonVersion>=oldestChange-1;
         if(clientVersion<oldestChange-1 && jsonVersion<oldestChange-1) {console.error('client version too old AND json version too old. id,jsonVersion,clientVersion,indexZeroVersion',project.id,jsonVersion,clientVersion,oldestChange);}
 
-        let changes = project.project.getChangesSinceVersion(parseFloat(req.params.version));
+        let changes = project.project.getChangesSinceVersion(clientVersion);
         if(forceReload) {
             changes=ListToObj(changes);
             changes.forceReload=true;
